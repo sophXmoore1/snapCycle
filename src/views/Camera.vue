@@ -1,4 +1,7 @@
 <template>
+  <v-btn @click="useFlask()">
+    use Flask
+  </v-btn>
   <div id="app" class="web-camera-container">
     <div class="camera-button">
         <button type="button" class="button is-rounded" :class="{ 'is-primary' : !isCameraOpen, 'is-danger' : isCameraOpen}" @click="toggleCamera">
@@ -31,7 +34,7 @@
     </div>
     
     <div v-if="isPhotoTaken && isCameraOpen" class="camera-download">
-      <a id="downloadPhoto" download="my-photo.jpg" class="button" role="button" @click="downloadImage">
+      <a id="downloadPhoto" :download="imageId+'.jpg'" class="button" role="button" @click="downloadImage">
         Download
       </a>
     </div>
@@ -40,6 +43,8 @@
 
 <script>
 import component1 from '@/components/component1.vue'
+import Replicate from "replicate";
+import axios from 'axios';
 
 export default {
   components: {
@@ -51,7 +56,8 @@ export default {
       isPhotoTaken: false,
       isShotPhoto: false,
       isLoading: false,
-      link: '#'
+      link: '#',
+      imageId: null
     }
   },
   //before the component is mounted
@@ -120,9 +126,88 @@ export default {
     
     downloadImage() {
       const download = document.getElementById("downloadPhoto");
-      const canvas = document.getElementById("photoTaken").toDataURL("image/jpeg")
-    .replace("image/jpeg", "image/octet-stream");
-      download.setAttribute("href", canvas);
+      const canvas = document.getElementById("photoTaken").toDataURL()
+      // const blob = this.b64toBlob(canvas, contentType);
+      // const blobUrl = URL.createObjectURL(blob);
+      this.useFlask()     
+      // // atob to base64_decode the data-URI
+      // var image_data = atob(canvas.split(',')[1]);
+      // console.log("image_data", image_data)
+      // // Use typed arrays to convert the binary data to a Blob
+      // var arraybuffer = new ArrayBuffer(image_data.length);
+      // var view = new Uint8Array(arraybuffer);
+      // for (var i=0; i<image_data.length; i++) {
+      //     view[i] = image_data.charCodeAt(i) & 0xff;
+      // }
+      // try {
+      //   // This is the recommended method:
+      //   var blob = new Blob([arraybuffer], {type: 'application/octet-stream'});
+      // } catch (e) {
+      //   // The BlobBuilder API has been deprecated in favour of Blob, but older
+      //   // browsers don't know about the Blob constructor
+      //   // IE10 also supports BlobBuilder, but since the `Blob` constructor
+      //   //  also works, there's no need to add `MSBlobBuilder`.
+      //   var bb = new (window.WebKitBlobBuilder || window.MozBlobBuilder);
+      //   bb.append(arraybuffer);
+      //   var blob = bb.getBlob('application/octet-stream'); // <-- Here's the Blob
+      // }
+      // var url = (window.webkitURL || window.URL).createObjectURL(blob);
+      // console.log("url", url)
+      //download.setAttribute("href", canvas);
+    },
+
+    b64toBlob(b64Data, contentType='', sliceSize=512){
+      const byteCharacters = atob(b64Data);
+      const byteArrays = [];
+
+      for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+        const slice = byteCharacters.slice(offset, offset + sliceSize);
+
+        const byteNumbers = new Array(slice.length);
+        for (let i = 0; i < slice.length; i++) {
+          byteNumbers[i] = slice.charCodeAt(i);
+        }
+
+        const byteArray = new Uint8Array(byteNumbers);
+        byteArrays.push(byteArray);
+      }
+
+      const blob = new Blob(byteArrays, {type: contentType});
+      return blob;
+    },
+
+    useFlask(){
+      const path = 'http://localhost:5001/ping';
+      axios.get(path)
+        .then((res) => {
+          console.log(res.data)
+        })
+        .catch((error) => {
+
+          console.error(error);
+        });
+    },
+
+    dataURItoBlob(dataURI){
+    // convert base64/URLEncoded data component to raw binary data held in a string
+    var byteString;
+
+    if(dataURI.split(',')[0].indexOf('base64') >= 0)
+        byteString = atob(dataURI.split(',')[1]);
+    // else
+    //     byteString = unescape(dataURI.split(',')[1]);
+
+    // separate out the mime component
+    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
+
+    // write the bytes of the string to a typed array
+    var ia = new Uint8Array(byteString.length);
+    for(var i = 0; i < byteString.length; i++)
+    {
+        ia[i] = byteString.charCodeAt(i);
+    }
+
+      return new Blob([ia], {type: mimeString});
     }
   }
 }

@@ -39,7 +39,7 @@ export default {
   },
   methods: {
     doMethod(){
-      console.log("button clicked")
+      generatePrompt()
     }
   }
 }
