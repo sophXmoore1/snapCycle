@@ -8,6 +8,13 @@
     >
       I am a vuetify button
     </v-btn>
+    <v-btn
+      class="ma-6"
+      href="/camera"
+      color="green"
+    >
+      Go To Camera
+    </v-btn>
     <component1 class="mt-5"></component1>
   </div>
 </template>
