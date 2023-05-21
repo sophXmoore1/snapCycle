@@ -1,15 +1,11 @@
 <template>
-  <v-btn @click="useFlask()">
-    use Flask
-  </v-btn>
   <div id="app" class="web-camera-container">
-    <div class="camera-button">
-        <button type="button" class="button is-rounded" :class="{ 'is-primary' : !isCameraOpen, 'is-danger' : isCameraOpen}" @click="toggleCamera">
-          <span v-if="!isCameraOpen">Open Camera</span>
-          <span v-else>Close Camera</span>
-      </button>
+    <div v-if="item">
+      item: {{item}}
     </div>
-    
+    <div v-if="recycleClassification">
+      {{recycleClassification}}
+    </div>
     <div v-show="isCameraOpen && isLoading" class="camera-loading">
       <ul class="loader-circle">
         <li></li>
@@ -34,8 +30,8 @@
     </div>
     
     <div v-if="isPhotoTaken && isCameraOpen" class="camera-download">
-      <a id="downloadPhoto" :download="imageId+'.jpg'" class="button" role="button" @click="downloadImage">
-        Download
+      <a id="downloadPhoto" download="my-photo" class="button" role="button" @click="downloadImage">
+        Analyze
       </a>
     </div>
   </div>
@@ -43,8 +39,8 @@
 
 <script>
 import component1 from '@/components/component1.vue'
-import Replicate from "replicate";
 import axios from 'axios';
+import { Configuration, OpenAIApi } from 'openai';
 
 export default {
   components: {
@@ -57,27 +53,18 @@ export default {
       isShotPhoto: false,
       isLoading: false,
       link: '#',
-      imageId: null
+      item: null,
+      recycleClassification: null
     }
   },
   //before the component is mounted
   created(){
-    console.log("Created")
+    this.createCameraElement()
+    this.isCameraOpen = true
   },
   computed: {
   },
   methods: {
-    toggleCamera() {
-      if(this.isCameraOpen) {
-        this.isCameraOpen = false;
-        this.isPhotoTaken = false;
-        this.isShotPhoto = false;
-        this.stopCameraStream();
-      } else {
-        this.isCameraOpen = true;
-        this.createCameraElement();
-      }
-    },
     createCameraElement() {
       this.isLoading = true;
       
@@ -124,63 +111,23 @@ export default {
       context.drawImage(this.$refs.camera, 0, 0, 450, 337.5);
     },
     
-    downloadImage() {
+    async downloadImage() {
       const download = document.getElementById("downloadPhoto");
       const canvas = document.getElementById("photoTaken").toDataURL()
-      // const blob = this.b64toBlob(canvas, contentType);
-      // const blobUrl = URL.createObjectURL(blob);
-      this.useFlask()     
-      // // atob to base64_decode the data-URI
-      // var image_data = atob(canvas.split(',')[1]);
-      // console.log("image_data", image_data)
-      // // Use typed arrays to convert the binary data to a Blob
-      // var arraybuffer = new ArrayBuffer(image_data.length);
-      // var view = new Uint8Array(arraybuffer);
-      // for (var i=0; i<image_data.length; i++) {
-      //     view[i] = image_data.charCodeAt(i) & 0xff;
-      // }
-      // try {
-      //   // This is the recommended method:
-      //   var blob = new Blob([arraybuffer], {type: 'application/octet-stream'});
-      // } catch (e) {
-      //   // The BlobBuilder API has been deprecated in favour of Blob, but older
-      //   // browsers don't know about the Blob constructor
-      //   // IE10 also supports BlobBuilder, but since the `Blob` constructor
-      //   //  also works, there's no need to add `MSBlobBuilder`.
-      //   var bb = new (window.WebKitBlobBuilder || window.MozBlobBuilder);
-      //   bb.append(arraybuffer);
-      //   var blob = bb.getBlob('application/octet-stream'); // <-- Here's the Blob
-      // }
-      // var url = (window.webkitURL || window.URL).createObjectURL(blob);
-      // console.log("url", url)
-      //download.setAttribute("href", canvas);
+      download.setAttribute("href", canvas);
+      var item = await this.useFlask()
+      var prompt = "How do I recycle or compost, if applicable, the following item: " + this.item + ", give your answer in a single paragraph"
+      console.log("prompt", prompt)
+      await this.useOpenAI(prompt)
     },
-
-    b64toBlob(b64Data, contentType='', sliceSize=512){
-      const byteCharacters = atob(b64Data);
-      const byteArrays = [];
-
-      for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
-        const slice = byteCharacters.slice(offset, offset + sliceSize);
-
-        const byteNumbers = new Array(slice.length);
-        for (let i = 0; i < slice.length; i++) {
-          byteNumbers[i] = slice.charCodeAt(i);
-        }
-
-        const byteArray = new Uint8Array(byteNumbers);
-        byteArrays.push(byteArray);
-      }
-
-      const blob = new Blob(byteArrays, {type: contentType});
-      return blob;
-    },
-
-    useFlask(){
+    async useFlask(){
       const path = 'http://localhost:5001/ping';
-      axios.get(path)
+      await axios.get(path)
         .then((res) => {
-          console.log(res.data)
+          let result = res.data
+          this.item = result.split(": ")[1]
+          console.log(this.item)
+          return result.split(": ")[1]
         })
         .catch((error) => {
 
@@ -188,26 +135,22 @@ export default {
         });
     },
 
-    dataURItoBlob(dataURI){
-    // convert base64/URLEncoded data component to raw binary data held in a string
-    var byteString;
-
-    if(dataURI.split(',')[0].indexOf('base64') >= 0)
-        byteString = atob(dataURI.split(',')[1]);
-    // else
-    //     byteString = unescape(dataURI.split(',')[1]);
-
-    // separate out the mime component
-    var mimeString = dataURI.split(',')[0].split(':')[1].split(';')[0];
-
-    // write the bytes of the string to a typed array
-    var ia = new Uint8Array(byteString.length);
-    for(var i = 0; i < byteString.length; i++)
-    {
-        ia[i] = byteString.charCodeAt(i);
-    }
-
-      return new Blob([ia], {type: mimeString});
+    async useOpenAI(prompt) {
+      var openai = new OpenAIApi(new Configuration({ apiKey: "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" }));
+      try {
+        const response = await openai.createCompletion({
+          model: "text-davinci-003",
+          prompt: prompt,
+          max_tokens: 100,
+          n: 1,
+          temperature: 0.8
+        });
+        console.log(`request cost: ${response.data.usage.total_tokens} tokens`);
+        this.recycleClassification = response.data.choices[0].text;
+        console.log(response);
+      } catch (error) {
+        console.error("API Error:", error.response);
+      }
     }
   }
 }

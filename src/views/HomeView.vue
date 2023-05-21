@@ -3,13 +3,6 @@
     <div>{{msg}}</div>
     <v-btn
       class="ma-6"
-      @click="doMethod()"
-      color="pink"
-    >
-      I am a vuetify button
-    </v-btn>
-    <v-btn
-      class="ma-6"
       href="/camera"
       color="green"
     >
@@ -29,7 +22,7 @@ export default {
   },
   data() {
     return {
-      msg: "This is the home page"
+      msg: "Welcome to snapCycle"
     }
   },
   //before the component is mounted
@@ -39,25 +32,6 @@ export default {
   computed: {
   },
   methods: {
-    async doMethod() {
-      var openai = new OpenAIApi(new Configuration({ apiKey: "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" }));
-      try {
-        const response = await openai.createCompletion({
-          model: "text-davinci-003",
-          prompt: "How to recycle a bottle, give your answer in a single paragraph",
-          max_tokens: 100,
-          n: 1,
-          temperature: 0.8
-        });
-        console.log(`request cost: ${response.data.usage.total_tokens} tokens`);
-        this.msg = response.data.choices[0].text;
-        console.log(response);
-      } catch (error) {
-        console.error("API Error:", error.response);
-      }
-    }
-
-   
   }
     
 }
